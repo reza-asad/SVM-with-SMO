@@ -11,6 +11,7 @@ class SVM():
 
 		# initialize the parameters of the model
 		self.params['alpha'] = None
+		self.params['w'] = None
 		self.params['bias'] = None
 
 	def naive_max_utility(self, X, y):
@@ -19,4 +20,7 @@ class SVM():
 
 
 	def predict(self, X):
-		pass
+		y_pred = np.dot(X, self.params['w']) + self.params['bias']
+		y_pred[y_pred >= 0] = 1
+		y_pred[y_pred < 0] = -1
+		return y_pred
