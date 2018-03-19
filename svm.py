@@ -13,7 +13,7 @@ class SVM():
 		self.params['alpha'] = None
 		self.params['bias'] = None
 
-	def maximize_utility(self, X, y):
+	def naive_max_utility(self, X, y):
 		num_train  = len(X)
 		self.params['alpha'] = np.zeros(num_train)
 
