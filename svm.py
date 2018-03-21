@@ -19,10 +19,10 @@ class SVM():
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
 		num_train  = len(X)
-		self.params['alpha'] = np.random.rand(num_train)[:,np.newaxis]
+		self.params['alpha'] = np.random.rand(num_train)
 		idx = range(num_train)
 		i = 0
-		while i < 300:
+		while i < 2000:
 			m, n = random.sample(idx, 2)
 			if m > n:
 				m, n = n, m
@@ -30,19 +30,18 @@ class SVM():
 			X_subset = X[idx_subset,:]
 			y_subset = y[idx_subset]
 			alpha_subset = self.params['alpha'][idx_subset]
-			x_m = X[m,:][np.newaxis]
-			y_m = y[m,0]
-			x_n = X[n,:][np.newaxis]
-			y_n = y[n,0]
+			x_m = X[m,:]
+			y_m = y[m]
+			x_n = X[n,:]
+			y_n = y[n]
 
-			# The coefficient of alpha^2
-			a = -0.5 * (np.dot(x_m, x_m.T) + np.dot(x_n, x_n.T))
-			# the coefficient of alpha
-			b = np.ones(len(idx_subset)) - \
-				np.dot(X_subset, x_n.T) * y_subset * alpha_subset * y_n - \
-				np.dot(X_subset, x_m.T) * y_subset * alpha_subset * y_n 
-			b = np.sum(b)
 			si = -np.sum(alpha_subset * y_subset)
+			# The coefficient of alpha^2
+			a = np.dot(x_m, x_n) - 0.5 * (np.dot(x_m, x_m) + np.dot(x_n, x_n))
+			# the coefficient of alpha
+			b = np.dot(X_subset, x_m) * y_subset * alpha_subset * y_n - \
+				np.dot(X_subset, x_n) * y_subset * alpha_subset * y_n
+			b = np.sum(b) + 1 - y_n * y_m  + si * y_n * (np.dot(x_m, x_m) - np.dot(x_m, x_n))
 
 			# Updated alpha_m and alpha_n
 			argmax = -float(b)/(2*a+epsilon)
@@ -54,13 +53,13 @@ class SVM():
 			self.params['alpha'][m] = alpha_m
 			self.params['alpha'][n] = alpha_n
 			i += 1
-		self.params['w'] = np.sum(X * y * self.params['alpha'], axis=0)
+		self.params['w'] = np.sum(X * y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
 
 		positive_X = X[(y==1).reshape(len(X),),:]
 		negative_X = X[(y==-1).reshape(len(X),),:]
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T))) 
-		return self.params['w'], self.params['bias']
+		return self.params['alpha'], self.params['w'], self.params['bias']
 
 	def predict(self, X):
 		y_pred = np.dot(X, self.params['w']) + self.params['bias']
