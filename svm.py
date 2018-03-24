@@ -23,11 +23,11 @@ class SVM():
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
 		x_range = np.linspace(self.X[:,0].min(), self.X[:,0].max(), resolution)
 		y_range = np.linspace(self.X[:,1].min(), self.X[:,1].max(), resolution)
-		grid = [[self.predict(np.array([[xi, yi]]))[0] for xi in x_range] for yi in y_range]
+		grid = [[self.predict(np.array([[xi, yi]]), epsilon=1.01)[0] for xi in x_range] for yi in y_range]
 		grid = np.array(grid)
 
-		ax.contour(x_range, y_range, grid, (0), linewidths=(1),
-                   linestyles=('-'), colors=colors)
+		ax.contour(x_range, y_range, grid, (-1,0,1), linewidths=(1,1,1),
+                   linestyles=('--','-','--'), colors=colors)
 		ax.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap=plt.cm.viridis, lw=0, alpha=0.5)
 		mask = self.params['alpha'] > 0
 		ax.scatter(self.X[:,0][mask], self.X[:,1][mask], c=self.y[mask], cmap=plt.cm.viridis, s=100)
@@ -110,12 +110,19 @@ class SVM():
 				grid, ax = self.plot_solution(200, ax)
 				plt.show()
 
+		if self.verbose:
+			print "Plot of the final model"
+			fig, ax = plt.subplots()
+			grid, ax = self.plot_solution(200, ax)
+			plt.show()
+
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def predict(self, X):
+	def predict(self, X, epsilon=0):
+		norm_w = np.sqrt(np.dot(self.params['w'], self.params['w']))
 		y_pred = np.dot(X, self.params['w']) + self.params['bias']
-		y_pred[y_pred >= 0] = 1
-		y_pred[y_pred < 0] = -1
+		y_pred[(y_pred-epsilon) >= 0] = 1
+		y_pred[(y_pred+epsilon) < 0] = -1
 		return y_pred
 
 
