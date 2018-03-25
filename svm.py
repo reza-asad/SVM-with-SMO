@@ -115,9 +115,9 @@ class SVM():
 			# Choose the best alpha pairs to optimize over.
 			E2_old = 0
 			for m in points:
-				E1_old = self.predict(self.X[first_alpha,:]) - y[first_alpha]
+				E1_old = self.predict(np.array([self.X[first_alpha,:]])) - y[first_alpha]
 				for n in range(num_train):
-					E2_candidate = self.predict(self.X[second_alpha,:]) - y[second_alpha]
+					E2_candidate = self.predict(np.array([self.X[second_alpha,:]])) - y[second_alpha]
 					if E2_old  < E2_candidate:
 						E2_old = E2_candidate
 						alpha_pair = (m, n)
@@ -131,9 +131,9 @@ class SVM():
 				else:
 					num_success_kkt = 0
 
-	def predict(self, X, epsilon=0):
-		norm_w = np.sqrt(np.dot(self.params['w'], self.params['w']))
-		y_pred = np.dot(X, self.params['w']) + self.params['bias']
+	def predict(self, X_test, epsilon=0):
+		y_pred = np.dot(self.X, X_test.T) * self.y[:,np.newaxis] * self.params['alpha'][:, np.newaxis]
+		y_pred = np.sum(y_pred, axis=0) + self.params['bias']
 		y_pred[(y_pred-epsilon) >= 0] = 1
 		y_pred[(y_pred+epsilon) < 0] = -1
 		return y_pred
