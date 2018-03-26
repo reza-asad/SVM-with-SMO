@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def kkt(X, y, alpha, w, bias, tol=1e-1 * 8):
+def kkt(X, y, alpha, w, bias, tol=1e-2 * 8):
 	constrain_neg = 1 - (np.dot(X, w) + bias) * y
 	constraint_neg_is_valid = np.max(constrain_neg) < tol
 

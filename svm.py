@@ -21,10 +21,27 @@ class SVM():
 		self.params['w'] = np.ones(D)
 		self.params['bias'] = 1
 
-	def __solver(self, m, n, idx, epsilon):
+	def __clip(self,m, n, alpha_m, alpha_n):
+		if self.y[m] * self.y[n] == 1:
+			gamma = self.params['alpha'][m] + self.params['alpha'][n]
+			alpha_n = np.maximum(np.minimum(alpha_n, gamma), 0)
+			alpha_m = np.maximum(np.minimum(alpha_m, gamma), 0)
+		elif self.y[m] * self.y[n] == -1:
+			gamma = self.params['alpha'][m] - self.params['alpha'][n]
+			if gamma > 0:
+				alpha_n = np.maximum(alpha_n, 0)
+				alpha_m = np.maximum(alpha_m, gamma)
+			else:
+				alpha_n = np.maximum(alpha_n, -gamma)
+				alpha_m = np.maximum(alpha_m, 0)
+		return alpha_m, alpha_n
+
+
+	def __solver(self, m, n, epsilon, update_threshold=1e-7):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
+		idx = range(len(self.X))
 		idx_subset = idx[:m] + idx[m+1:n] + idx[n+1:]
 		X_subset = self.X[idx_subset,:]
 		y_subset = self.y[idx_subset]
@@ -46,18 +63,13 @@ class SVM():
 		alpha_n = -float(b)/(2*a+epsilon)
 		alpha_m = (si - alpha_n * y_n) * y_m
 		# Clip the sollution to satisfy the optimizations constraint.
-		if y_m * y_n == 1:
-			gamma = self.params['alpha'][m] + self.params['alpha'][n]
-			alpha_n = np.maximum(np.minimum(alpha_n, gamma), 0)
-			alpha_m = np.maximum(np.minimum(alpha_m, gamma), 0)
-		elif y_m * y_n == -1:
-			gamma = self.params['alpha'][m] - self.params['alpha'][n]
-			if gamma > 0:
-				alpha_n = np.maximum(alpha_n, 0)
-				alpha_m = np.maximum(alpha_m, gamma)
-			else:
-				alpha_n = np.maximum(alpha_n, -gamma)
-				alpha_m = np.maximum(alpha_m, 0)
+		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
+
+		# If there is not enough change in the parameter skip the update
+		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
+		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
+		if alpha_m_static and alpha_n_static:
+			return False
 
 		# Update the pair of alpha		
 		self.params['alpha'][m] = alpha_m
@@ -71,6 +83,7 @@ class SVM():
 		negative_X = self.X[(self.y==-1),:]
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T)))
+		return True
 
 	def __advanced_solver(self, m, n, update_threshold=1e-2):
 		if m > n:
@@ -81,7 +94,7 @@ class SVM():
 			np.dot(self.X[n,:], self.X[m,:])
 		alpha_n = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / k
 		alpha_m = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n)
-		alpha_m, alpha_n = self.__clip(alpha_m, alpha_n)
+		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 		if abs(alpha_m - self.params['alpha'][m]) < update_threshold:
 			return False
 
@@ -102,13 +115,13 @@ class SVM():
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
 		num_train = len(self.X)
-		idx = range(num_train)
 		num_iter = 1
 		while not kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
 			m, n = random.sample(idx, 2)
 			if m > n:
 				m,n = n, m
-			self.__solver(m, n, idx, epsilon)
+			self.__solver(m, n, epsilon)
+			# self.__advanced_solver(m, n)
 
 			if self.verbose and (num_iter % print_every == 0):
 				print "This is iteration {}:".format(num_iter)
@@ -125,41 +138,44 @@ class SVM():
 			plt.show()
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=100, pos_alpha_prob=0.6):
+	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=100, pos_alpha_prob=0.8):
 		num_train = len(self.X)
+		idx = range(num_train)
 		num_success_kkt = 0
 		num_iter = 1
 		while (num_success_kkt < success_threshold):
 			# Iterate through the non boundary alphas with probability pos_alpha_prob
 			prob = np.random.uniform(0,1) 
 			pos_alpha = [i for i in range(num_train) if self.params['alpha'][i] > 0]
-			if (len(pos_alpha) > 0) and (prob < pos_alpha_prob:):
+			if (len(pos_alpha) > 0) and (prob < pos_alpha_prob):
 				m = np.random.randint(len(pos_alpha))
 			else:
 				m = np.random.randint(num_train)
 			
 			# Case 1: Choose alpha_n over the non-boundary examples that maximizes the E2 - E1
+			update_successful = False
 			if len(pos_alpha) > 0:
 				Em_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
 				En_old = Em_old
+				n = 0
 				for i in pos_alpha:
 					En_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
 					if abs(En_candidate - Em_old) > abs(En_old - Em_old):
 						En_old = En_candidate
 						n = i
 
-				update_successful  = self.__advanced_solver(m,n)
+				update_successful  = self.__solver(m, n, epsilon)
 				if not update_successful:
 					random_start_idx = np.random.randint(len(pos_alpha))
 					for i in range(random_start_idx, len(pos_alpha)):
-						update_successful = self.__advanced_solver(m,i):
+						update_successful = self.__solver(m, i, epsilon)
 						if update_successful:
 							break
 
 			if not update_successful:
 				random_start_idx = np.random.randint(num_train)
 				for i in range(random_start_idx, num_train):
-					if self.__advanced_solver(m, i):
+					if self.__solver(m, i, epsilon):
 						break
 			# Check if the new solution violates kkt
 			if kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
