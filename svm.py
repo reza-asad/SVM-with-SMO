@@ -72,10 +72,30 @@ class SVM():
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 
-	def __advanced_solver(self, m, n, threshold=1e-2):
+	def __advanced_solver(self, m, n, update_threshold=1e-2):
 		if m > n:
 			m, n = n, m
-		
+		Em_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+		En_old = np.abs(self.predict(np.array([self.X[n,:]])) - self.y[n])
+		k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
+			np.dot(self.X[n,:], self.X[m,:])
+		alpha_n = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / k
+		alpha_m = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n)
+		alpha_m, alpha_n = self.__clip(alpha_m, alpha_n)
+		if abs(alpha_m - self.params['alpha'][m]) < update_threshold:
+			return False
+
+		# Update alphas
+		self.params['alpha'][m] = alpha_m
+		self.params['alpha'][n] = alpha_n
+		# Compute the weights given the new values of alpha
+		self.params['w'] = np.sum(self.X * self.y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
+		# Compute the bias
+		positive_X = self.X[(self.y==1),:]
+		negative_X = self.X[(self.y==-1),:]
+		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
+									  np.min(np.dot(self.params['w'], positive_X.T)))
+		return True
 
 	def naive_max_utility(self, epsilon=1e-5, print_every=1000):
 		# The utility function is a polynomial of degree 2 in alpha
@@ -120,12 +140,12 @@ class SVM():
 			
 			# Case 1: Choose alpha_n over the non-boundary examples that maximizes the E2 - E1
 			if len(pos_alpha) > 0:
-				E1_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
-				E2_old = E1_old
+				Em_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+				En_old = Em_old
 				for i in pos_alpha:
-					E2_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
-					if abs(E2_candidate - E1_old) > abs(E2_old - E1_old):
-						E2_old = E2_candidate
+					En_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
+					if abs(En_candidate - Em_old) > abs(En_old - Em_old):
+						En_old = En_candidate
 						n = i
 
 				update_successful  = self.__advanced_solver(m,n)
