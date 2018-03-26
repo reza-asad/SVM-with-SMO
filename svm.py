@@ -72,19 +72,23 @@ class SVM():
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 
+	def __advanced_solver(self, m, n, threshold=1e-2):
+		if m > n:
+			m, n = n, m
+		
+
 	def naive_max_utility(self, epsilon=1e-5, print_every=1000):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
 		num_train = len(self.X)
 		idx = range(num_train)
-		num_iter = 0
+		num_iter = 1
 		while not kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
 			m, n = random.sample(idx, 2)
 			if m > n:
 				m,n = n, m
 			self.__solver(m, n, idx, epsilon)
-			num_iter += 1
 
 			if self.verbose and (num_iter % print_every == 0):
 				print "This is iteration {}:".format(num_iter)
@@ -92,6 +96,7 @@ class SVM():
 				fig, ax = plt.subplots()
 				grid, ax = self.plot_solution(200, ax)
 				plt.show()
+			num_iter += 1
 
 		if self.verbose:
 			print "Plot of the final model"
@@ -100,40 +105,68 @@ class SVM():
 			plt.show()
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=10, pos_alpha_prob=0.7):
+	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=100, pos_alpha_prob=0.6):
 		num_train = len(self.X)
 		num_success_kkt = 0
-		while num_success_kkt < success_threshold:
+		num_iter = 1
+		while (num_success_kkt < success_threshold):
 			# Iterate through the non boundary alphas with probability pos_alpha_prob
-			p = np.random.uniform(0,1)
+			prob = np.random.uniform(0,1) 
 			pos_alpha = [i for i in range(num_train) if self.params['alpha'][i] > 0]
-			if (p > 0.3) and (len(pos_alpha) > 0):
-				points = pos_alpha
+			if (len(pos_alpha) > 0) and (prob < pos_alpha_prob:):
+				m = np.random.randint(len(pos_alpha))
 			else:
-				points = range(num_train)
+				m = np.random.randint(num_train)
 			
-			# Choose the best alpha pairs to optimize over.
-			E2_old = 0
-			for m in points:
-				E1_old = self.predict(np.array([self.X[first_alpha,:]])) - y[first_alpha]
-				for n in range(num_train):
-					E2_candidate = self.predict(np.array([self.X[second_alpha,:]])) - y[second_alpha]
-					if E2_old  < E2_candidate:
+			# Case 1: Choose alpha_n over the non-boundary examples that maximizes the E2 - E1
+			if len(pos_alpha) > 0:
+				E1_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+				E2_old = E1_old
+				for i in pos_alpha:
+					E2_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
+					if abs(E2_candidate - E1_old) > abs(E2_old - E1_old):
 						E2_old = E2_candidate
-						alpha_pair = (m, n)
-				# Solve the maximization problem over the pair of alpha
-				if m > n:
-					m, n = n, m
-				idx = range(num_train)
-				self.__solver(m, n, idx, epsilon)
-				if kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
-					num_success_kkt += 1
-				else:
-					num_success_kkt = 0
+						n = i
+
+				update_successful  = self.__advanced_solver(m,n)
+				if not update_successful:
+					random_start_idx = np.random.randint(len(pos_alpha))
+					for i in range(random_start_idx, len(pos_alpha)):
+						update_successful = self.__advanced_solver(m,i):
+						if update_successful:
+							break
+
+			if not update_successful:
+				random_start_idx = np.random.randint(num_train)
+				for i in range(random_start_idx, num_train):
+					if self.__advanced_solver(m, i):
+						break
+			# Check if the new solution violates kkt
+			if kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
+				num_success_kkt += 1
+			else:
+				num_success_kkt = 0
+
+			# Plot the evolution of the solution
+			if self.verbose and (num_iter % print_every == 0):
+				print "This is iteration {}:".format(num_iter)
+				print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+				fig, ax = plt.subplots()
+				grid, ax = self.plot_solution(200, ax)
+				plt.show()
+			num_iter += 1
+
+		# Plot the final model
+		if self.verbose:
+			print "Plot of the final model"
+			fig, ax = plt.subplots()
+			grid, ax = self.plot_solution(300, ax)
+			plt.show()
+
+		return self.params['alpha'], self.params['w'], self.params['bias']
 
 	def predict(self, X_test, epsilon=0):
-		y_pred = np.dot(self.X, X_test.T) * self.y[:,np.newaxis] * self.params['alpha'][:, np.newaxis]
-		y_pred = np.sum(y_pred, axis=0) + self.params['bias']
+		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
 		y_pred[(y_pred-epsilon) >= 0] = 1
 		y_pred[(y_pred+epsilon) < 0] = -1
 		return y_pred
