@@ -125,7 +125,7 @@ class SVM():
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 		return True
 
-	def naive_max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=1):
+	def naive_max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=10):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
@@ -157,7 +157,7 @@ class SVM():
 			plt.show()
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=1, pos_alpha_prob=0.8):
+	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=10, pos_alpha_prob=0.5):
 		num_train = len(self.X)
 		idx = range(num_train)
 		num_success_kkt = 0
@@ -219,6 +219,28 @@ class SVM():
 			plt.show()
 
 		return self.params['alpha'], self.params['w'], self.params['bias']
+
+	def train(self, print_every=1000):
+		num_train = len(self.X)
+		examine_all = 1
+		num_changed = 0
+		while (num_changed > 0) or examine_all:
+			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
+			# Loop through all the examples and pick the first alpha
+			if examine_all:
+				for i in range(num_train):
+					choose_succeed = self.__choose_second_alpha(i)
+					if choose_succeed:
+						num_changed += 1
+			else:
+				for i in pos_alpha:
+					choose_succeed = self.__choose_second_alpha(i)
+					if choose_succeed:
+						num_changed += 1
+			if examine_all:
+				examine_all = 0
+			elif num_changed == 0:
+				examine_all = 1
 
 	def predict(self, X_test, epsilon=0):
 		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
