@@ -41,6 +41,8 @@ class SVM():
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
+		if m > n:
+			m ,n = n, m
 		idx = range(len(self.X))
 		idx_subset = idx[:m] + idx[m+1:n] + idx[n+1:]
 		X_subset = self.X[idx_subset,:]
@@ -62,8 +64,17 @@ class SVM():
 		# Updated alpha_m and alpha_n
 		alpha_n = -float(b)/(2*a+epsilon)
 		alpha_m = (si - alpha_n * y_n) * y_m
+
+		# Em_old = (self.predict(np.array([self.X[m,:]])) - self.y[m])[0]
+		# En_old = (self.predict(np.array([self.X[n,:]])) - self.y[n])[0]
+		# k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
+		# 	2 * np.dot(self.X[n,:], self.X[m,:])
+		# alpha_n_prime = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / (k+1e-5)
+		# alpha_m_prime = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n_prime)
+
 		# Clip the sollution to satisfy the optimizations constraint.
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
+		# alpha_m_prime, alpha_n_prime = self.__clip(m, n, alpha_m_prime, alpha_n_prime)
 
 		# If there is not enough change in the parameter skip the update
 		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
@@ -85,17 +96,21 @@ class SVM():
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 		return True
 
-	def __advanced_solver(self, m, n, update_threshold=1e-2):
+	def __advanced_solver(self, m, n, epsilon, update_threshold=1e-5):
 		if m > n:
 			m, n = n, m
-		Em_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
-		En_old = np.abs(self.predict(np.array([self.X[n,:]])) - self.y[n])
+		Em_old = self.predict(np.array([self.X[m,:]])) - self.y[m]
+		En_old = self.predict(np.array([self.X[n,:]])) - self.y[n]
 		k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
-			np.dot(self.X[n,:], self.X[m,:])
-		alpha_n = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / k
+			2 * np.dot(self.X[n,:], self.X[m,:])
+		alpha_n = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / (k+epsilon)
 		alpha_m = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n)
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
-		if abs(alpha_m - self.params['alpha'][m]) < update_threshold:
+
+		# If there is not enough change in the parameter skip the update
+		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
+		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
+		if alpha_m_static and alpha_n_static:
 			return False
 
 		# Update alphas
@@ -110,19 +125,23 @@ class SVM():
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 		return True
 
-	def naive_max_utility(self, epsilon=1e-5, print_every=1000):
+	def naive_max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=1):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
 		num_train = len(self.X)
+		num_success_kkt = 0
 		num_iter = 1
-		while not kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
+		idx = range(num_train)
+		while num_success_kkt <  success_threshold:
 			m, n = random.sample(idx, 2)
-			if m > n:
-				m,n = n, m
 			self.__solver(m, n, epsilon)
-			# self.__advanced_solver(m, n)
+			# self.__advanced_solver(m, n, epsilon)
 
+			if kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
+				num_success_kkt += 1
+			else:
+				num_success_kkt = 0
 			if self.verbose and (num_iter % print_every == 0):
 				print "This is iteration {}:".format(num_iter)
 				print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
@@ -138,7 +157,7 @@ class SVM():
 			plt.show()
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=100, pos_alpha_prob=0.8):
+	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=1, pos_alpha_prob=0.8):
 		num_train = len(self.X)
 		idx = range(num_train)
 		num_success_kkt = 0
