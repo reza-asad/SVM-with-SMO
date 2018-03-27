@@ -220,23 +220,53 @@ class SVM():
 
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
+	def __choose_second_alpha(m, pos_alpha):
+		if len(pos_alpha) > 0:
+			# Case1: Choose the second alpha over non boundary examples with max error
+			Em = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+			En = Em
+			n = 0
+			for i in pos_alpha:
+				E_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
+				if abs(Em - E_candidate) > abs(Em - En):
+					En = E_candidate
+					n = i
+			took_step = self.__solver(m, n, epsilon)
+			if took_step:
+				return 1
+
+			# Case2: Choose the second alpha over the all non boundary examples 
+			#		 starting from a random index.
+			random_start_idx = np.random.randint(len(pos_alpha))
+			for i in pos_alpha[random_start_idx:]:
+				took_step = self.__solver(m, i, epsilon)
+				if took_step:
+					return 1
+		# Case3: Choose the second alpha over all the examples starting from a 
+		#		 random index.
+		random_start_idx = np.random.randint(num_train)
+		for i in range(random_start_idx, num_train):
+			took_step = self.__solver(m, i, epsilon)
+			if took_step:
+				return 1
+		return 0
+
 	def train(self, print_every=1000):
 		num_train = len(self.X)
 		examine_all = 1
 		num_changed = 0
 		while (num_changed > 0) or examine_all:
+			num_changed = 0
 			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
 			# Loop through all the examples and pick the first alpha
 			if examine_all:
 				for i in range(num_train):
-					choose_succeed = self.__choose_second_alpha(i)
-					if choose_succeed:
-						num_changed += 1
+					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
+					num_changed += choose_succeed
 			else:
 				for i in pos_alpha:
-					choose_succeed = self.__choose_second_alpha(i)
-					if choose_succeed:
-						num_changed += 1
+					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
+					num_changed += choose_succeed
 			if examine_all:
 				examine_all = 0
 			elif num_changed == 0:
