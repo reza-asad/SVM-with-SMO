@@ -6,7 +6,7 @@ from utility import *
 
 class SVM():
 	# Comments later
-	def __init__(self, X, y, reg=0.0, dtype=np.float64, verbose=False):
+	def __init__(self, X, y, reg=0.0, dtype=np.float64, verbose=False, print_every=1):
 		self.X = X
 		self.y = y
 
@@ -14,6 +14,7 @@ class SVM():
 		self.dtype = dtype
 		self.verbose = verbose
 		self.params = {}
+		self.print_every = print_every
 
 		# initialize the parameters of the model
 		N, D = X.shape
@@ -160,11 +161,10 @@ class SVM():
 				return 1
 		return 0
 
-	def train(self, print_every=1000):
+	def train(self):
 		num_train = len(self.X)
 		examine_all = 1
 		num_changed = 0
-		num_iter = 1
 		while (num_changed > 0) or examine_all:
 			num_changed = 0
 			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
@@ -173,40 +173,23 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					num_iter += 1
-					# Plot the evolution of the solution
-					if self.verbose and (num_iter % print_every == 0):
-						print "This is iteration {}:".format(num_iter)
-						print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
-						fig, ax = plt.subplots()
-						grid, ax = self.plot_solution(200, ax)
-						plt.show()
 
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					num_iter += 1
-					# Plot the evolution of the solution
-					if self.verbose and (num_iter % print_every == 0):
-						print "This is iteration {}:".format(num_iter)
-						print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
-						fig, ax = plt.subplots()
-						grid, ax = self.plot_solution(200, ax)
-						plt.show()
 
 			if examine_all == 1:
 				examine_all = 0
 			elif num_changed == 0:
 				examine_all = 1
-
-			# Plot the evolution of the solution
-			if self.verbose and (num_iter % print_every == 0):
-				print "This is iteration {}:".format(num_iter)
-				print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
-				fig, ax = plt.subplots()
-				grid, ax = self.plot_solution(200, ax)
-				plt.show()
+				
+		# Plot the final model
+		if self.verbose:
+			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+			fig, ax = plt.subplots()
+			grid, ax = self.plot_solution(200, ax)
+			plt.show()
 
 
 	def predict(self, X_test, epsilon=0):
