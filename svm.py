@@ -47,7 +47,7 @@ class SVM():
 		return alpha_m, alpha_n
 
 
-	def __solver(self, m, n, epsilon=1e-5, update_threshold=1e-3):
+	def __solver(self, m, n, epsilon=1e-5):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
@@ -83,9 +83,8 @@ class SVM():
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 
 		# If there is not enough change in the parameter skip the update
-		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
-		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
-		if alpha_m_static or alpha_n_static:
+		alpha_n_old = self.params['alpha'][n]
+		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
 			return 0
 
 		# Update the pair of alpha		
@@ -102,7 +101,11 @@ class SVM():
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 		return 1
 
-	def __advanced_solver(self, m, n, epsilon=1e-5, update_threshold=1e-3):
+	def __advanced_solver(self, m, n, epsilon=1e-5):
+		# Skip the case that both alphas are the same.
+		if m == n:
+			return 0
+
 		if m > n:
 			m, n = n, m
 		Em = np.dot(self.X[m,:], self.params['w']) + self.params['bias'] - self.y[m]
@@ -116,9 +119,8 @@ class SVM():
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 
 		# If there is not enough change in the parameter skip the update
-		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
-		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
-		if alpha_m_static or alpha_n_static:
+		alpha_n_old = self.params['alpha'][n]
+		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
 			return 0
 
 		# Update alphas
@@ -147,7 +149,7 @@ class SVM():
 				if abs(Em - E_candidate) > abs(Em - En):
 					En = E_candidate
 					n = i
-			took_step = self.__solver(m, n)
+			took_step = self.__advanced_solver(m, n)
 			if took_step:
 				return 1
 
@@ -155,7 +157,7 @@ class SVM():
 			#		 starting from a random index.
 			random_start_idx = np.random.randint(len(pos_alpha))
 			for i in pos_alpha[random_start_idx:]:
-				took_step = self.__solver(m, i)
+				took_step = self.__advanced_solver(m, i)
 				if took_step:
 					return 1
 
@@ -164,7 +166,7 @@ class SVM():
 		num_train = len(self.X)
 		random_start_idx = np.random.randint(num_train)
 		for i in range(random_start_idx, num_train):
-			took_step = self.__solver(m, i)
+			took_step = self.__advanced_solver(m, i)
 			if took_step:
 				return 1
 		return 0
@@ -199,6 +201,8 @@ class SVM():
 			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
 			fig, ax = plt.subplots()
 			grid, ax = self.plot_solution(200, ax)
+			plt.xlabel('petal_width')
+			plt.ylabel('petal_length')
 			plt.show()
 
 
