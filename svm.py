@@ -6,7 +6,7 @@ from utility import *
 
 class SVM():
 	# Comments later
-	def __init__(self, X, y, reg=0.0, dtype=np.float64, verbose=False, print_every=1):
+	def __init__(self, X, y, reg=0.0, dtype=np.float64, verbose=False):
 		self.X = X
 		self.y = y
 
@@ -14,7 +14,6 @@ class SVM():
 		self.dtype = dtype
 		self.verbose = verbose
 		self.params = {}
-		self.print_every = print_every
 
 		# initialize the parameters of the model
 		N, D = X.shape
@@ -97,22 +96,24 @@ class SVM():
 									  np.min(np.dot(self.params['w'], positive_X.T)))
 		return 1
 
-	def __advanced_solver(self, m, n, epsilon, update_threshold=1e-5):
+	def __advanced_solver(self, m, n, epsilon=1e-5, update_threshold=1e-3):
 		if m > n:
 			m, n = n, m
-		Em_old = self.predict(np.array([self.X[m,:]])) - self.y[m]
-		En_old = self.predict(np.array([self.X[n,:]])) - self.y[n]
+		Em = np.dot(self.X[m,:], self.params['w']) + self.params['bias'] - self.y[m]
+		En = np.dot(self.X[n,:], self.params['w']) + self.params['bias'] - self.y[n]
+
 		k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
 			2 * np.dot(self.X[n,:], self.X[m,:])
-		alpha_n = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / (k+epsilon)
+
+		alpha_n = self.params['alpha'][n] + self.y[n] * (En - Em) / (k+epsilon)
 		alpha_m = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n)
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 
 		# If there is not enough change in the parameter skip the update
 		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
 		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
-		if alpha_m_static and alpha_n_static:
-			return False
+		if alpha_m_static or alpha_n_static:
+			return 0
 
 		# Update alphas
 		self.params['alpha'][m] = alpha_m
@@ -124,7 +125,7 @@ class SVM():
 		negative_X = self.X[(self.y==-1),:]
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T)))
-		return True
+		return 1
 
 
 	def __choose_second_alpha(self, m, pos_alpha):
@@ -140,7 +141,7 @@ class SVM():
 				if abs(Em - E_candidate) > abs(Em - En):
 					En = E_candidate
 					n = i
-			took_step = self.__solver(m, n)
+			took_step = self.__advanced_solver(m, n)
 			if took_step:
 				return 1
 
@@ -148,7 +149,7 @@ class SVM():
 			#		 starting from a random index.
 			random_start_idx = np.random.randint(len(pos_alpha))
 			for i in pos_alpha[random_start_idx:]:
-				took_step = self.__solver(m, i)
+				took_step = self.__advanced_solver(m, i)
 				if took_step:
 					return 1
 		# Case3: Choose the second alpha over all the examples starting from a 
@@ -156,7 +157,7 @@ class SVM():
 		num_train = len(self.X)
 		random_start_idx = np.random.randint(num_train)
 		for i in range(random_start_idx, num_train):
-			took_step = self.__solver(m, i)
+			took_step = self.__advanced_solver(m, i)
 			if took_step:
 				return 1
 		return 0
@@ -183,7 +184,7 @@ class SVM():
 				examine_all = 0
 			elif num_changed == 0:
 				examine_all = 1
-				
+
 		# Plot the final model
 		if self.verbose:
 			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
