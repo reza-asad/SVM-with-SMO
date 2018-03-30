@@ -14,12 +14,22 @@ class SVM():
 		self.dtype = dtype
 		self.verbose = verbose
 		self.params = {}
+		self.objective_func_values = []
 
 		# initialize the parameters of the model
 		N, D = X.shape
 		self.params['alpha'] = np.zeros(N)
 		self.params['w'] = np.ones(D)
 		self.params['bias'] = 1
+
+	def __compute_objective_function(self):
+		temp = self.y * self.params['alpha']
+		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
+														    		np.dot(self.X,
+														   		    	   self.X.T)
+														    		),
+															temp)
+		return result
 
 	def __clip(self,m, n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
@@ -65,16 +75,8 @@ class SVM():
 		alpha_n = -float(b)/(2*a+epsilon)
 		alpha_m = (si - alpha_n * y_n) * y_m
 
-		# Em_old = (self.predict(np.array([self.X[m,:]])) - self.y[m])[0]
-		# En_old = (self.predict(np.array([self.X[n,:]])) - self.y[n])[0]
-		# k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
-		# 	2 * np.dot(self.X[n,:], self.X[m,:])
-		# alpha_n_prime = self.params['alpha'][n] + self.y[n] * (En_old - Em_old) / (k+1e-5)
-		# alpha_m_prime = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n_prime)
-
 		# Clip the sollution to satisfy the optimizations constraint.
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
-		# alpha_m_prime, alpha_n_prime = self.__clip(m, n, alpha_m_prime, alpha_n_prime)
 
 		# If there is not enough change in the parameter skip the update
 		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
@@ -141,7 +143,7 @@ class SVM():
 				if abs(Em - E_candidate) > abs(Em - En):
 					En = E_candidate
 					n = i
-			took_step = self.__advanced_solver(m, n)
+			took_step = self.__solver(m, n)
 			if took_step:
 				return 1
 
@@ -149,15 +151,16 @@ class SVM():
 			#		 starting from a random index.
 			random_start_idx = np.random.randint(len(pos_alpha))
 			for i in pos_alpha[random_start_idx:]:
-				took_step = self.__advanced_solver(m, i)
+				took_step = self.__solver(m, i)
 				if took_step:
 					return 1
+
 		# Case3: Choose the second alpha over all the examples starting from a 
 		#		 random index.
 		num_train = len(self.X)
 		random_start_idx = np.random.randint(num_train)
 		for i in range(random_start_idx, num_train):
-			took_step = self.__advanced_solver(m, i)
+			took_step = self.__solver(m, i)
 			if took_step:
 				return 1
 		return 0
@@ -174,11 +177,13 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
+					self.objective_func_values.append(self.__compute_objective_function())
 
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
+					self.objective_func_values.append(self.__compute_objective_function())
 
 			if examine_all == 1:
 				examine_all = 0
