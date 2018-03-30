@@ -22,7 +22,7 @@ class SVM():
 		self.params['w'] = np.ones(D)
 		self.params['bias'] = 1
 
-	def __compute_objective_function(self):
+	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
 		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
 														    		np.dot(self.X,
@@ -51,6 +51,10 @@ class SVM():
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
+		
+		# Skip the case that both alphas are the same.
+		if m == n:
+			return 0
 		if m > n:
 			m ,n = n, m
 		idx = range(len(self.X))
@@ -177,13 +181,13 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					self.objective_func_values.append(self.__compute_objective_function())
+					self.objective_func_values.append(self.__evaluate_objective_function())
 
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					self.objective_func_values.append(self.__compute_objective_function())
+					self.objective_func_values.append(self.__evaluate_objective_function())
 
 			if examine_all == 1:
 				examine_all = 0
@@ -198,16 +202,14 @@ class SVM():
 			plt.show()
 
 
-	def predict(self, X_test, epsilon=0):
+	def predict(self, X_test):
 		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
-		y_pred[(y_pred-epsilon) >= 0] = 1
-		y_pred[(y_pred+epsilon) < 0] = -1
 		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
 		x_range = np.linspace(self.X[:,0].min(), self.X[:,0].max(), resolution)
 		y_range = np.linspace(self.X[:,1].min(), self.X[:,1].max(), resolution)
-		grid = [[self.predict(np.array([[xi, yi]]), epsilon=1.01)[0] for xi in x_range] for yi in y_range]
+		grid = [[self.predict(np.array([xi, yi])) for xi in x_range] for yi in y_range]
 		grid = np.array(grid)
 
 		ax.contour(x_range, y_range, grid, levels=(-1,0,1), linewidths=(1,1,1),
