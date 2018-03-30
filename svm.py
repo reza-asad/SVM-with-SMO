@@ -37,7 +37,7 @@ class SVM():
 		return alpha_m, alpha_n
 
 
-	def __solver(self, m, n, epsilon, update_threshold=1e-7):
+	def __solver(self, m, n, epsilon=1e-5, update_threshold=1e-3):
 		# The utility function is a polynomial of degree 2 in alpha
 		# a * alpha^2 + b * alpha + c
 		# The solution is -b/(2*a)
@@ -79,8 +79,8 @@ class SVM():
 		# If there is not enough change in the parameter skip the update
 		alpha_m_static = abs(alpha_m - self.params['alpha'][m]) < update_threshold
 		alpha_n_static = abs(alpha_n - self.params['alpha'][n]) < update_threshold
-		if alpha_m_static and alpha_n_static:
-			return False
+		if alpha_m_static or alpha_n_static:
+			return 0
 
 		# Update the pair of alpha		
 		self.params['alpha'][m] = alpha_m
@@ -94,7 +94,7 @@ class SVM():
 		negative_X = self.X[(self.y==-1),:]
 		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
 									  np.min(np.dot(self.params['w'], positive_X.T)))
-		return True
+		return 1
 
 	def __advanced_solver(self, m, n, epsilon, update_threshold=1e-5):
 		if m > n:
@@ -157,7 +157,7 @@ class SVM():
 			plt.show()
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def max_utility(self, epsilon=1e-5, print_every=1000, success_threshold=10, pos_alpha_prob=0.5):
+	def max_utility(self, print_every=1000, success_threshold=10, pos_alpha_prob=0.5):
 		num_train = len(self.X)
 		idx = range(num_train)
 		num_success_kkt = 0
@@ -174,27 +174,29 @@ class SVM():
 			# Case 1: Choose alpha_n over the non-boundary examples that maximizes the E2 - E1
 			update_successful = False
 			if len(pos_alpha) > 0:
-				Em_old = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+				Em_old = np.abs(np.dot(self.X[m,:], self.params['w']) + \
+						 self.params['bias'] - self.y[m])
 				En_old = Em_old
 				n = 0
 				for i in pos_alpha:
-					En_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
+					En_candidate = np.abs(np.dot(self.X[i,:], self.params['w']) + \
+								   self.params['bias'] - self.y[i])
 					if abs(En_candidate - Em_old) > abs(En_old - Em_old):
 						En_old = En_candidate
 						n = i
 
-				update_successful  = self.__solver(m, n, epsilon)
+				update_successful  = self.__solver(m, n)
 				if not update_successful:
 					random_start_idx = np.random.randint(len(pos_alpha))
 					for i in range(random_start_idx, len(pos_alpha)):
-						update_successful = self.__solver(m, i, epsilon)
+						update_successful = self.__solver(m, i)
 						if update_successful:
 							break
 
 			if not update_successful:
 				random_start_idx = np.random.randint(num_train)
 				for i in range(random_start_idx, num_train):
-					if self.__solver(m, i, epsilon):
+					if self.__solver(m, i):
 						break
 			# Check if the new solution violates kkt
 			if kkt(self.X, self.y, self.params['alpha'], self.params['w'], self.params['bias']):
@@ -220,18 +222,20 @@ class SVM():
 
 		return self.params['alpha'], self.params['w'], self.params['bias']
 
-	def __choose_second_alpha(m, pos_alpha):
+	def __choose_second_alpha(self, m, pos_alpha):
 		if len(pos_alpha) > 0:
 			# Case1: Choose the second alpha over non boundary examples with max error
-			Em = np.abs(self.predict(np.array([self.X[m,:]])) - self.y[m])
+			Em = np.abs(np.dot(self.X[m,:], self.params['w']) + \
+				 self.params['bias'] - self.y[m])
 			En = Em
 			n = 0
 			for i in pos_alpha:
-				E_candidate = np.abs(self.predict(np.array([self.X[i,:]])) - self.y[i])
+				E_candidate = np.abs(np.dot(self.X[i,:], self.params['w']) + \
+							  self.params['bias'] - self.y[i])
 				if abs(Em - E_candidate) > abs(Em - En):
 					En = E_candidate
 					n = i
-			took_step = self.__solver(m, n, epsilon)
+			took_step = self.__solver(m, n)
 			if took_step:
 				return 1
 
@@ -239,14 +243,15 @@ class SVM():
 			#		 starting from a random index.
 			random_start_idx = np.random.randint(len(pos_alpha))
 			for i in pos_alpha[random_start_idx:]:
-				took_step = self.__solver(m, i, epsilon)
+				took_step = self.__solver(m, i)
 				if took_step:
 					return 1
 		# Case3: Choose the second alpha over all the examples starting from a 
 		#		 random index.
+		num_train = len(self.X)
 		random_start_idx = np.random.randint(num_train)
 		for i in range(random_start_idx, num_train):
-			took_step = self.__solver(m, i, epsilon)
+			took_step = self.__solver(m, i)
 			if took_step:
 				return 1
 		return 0
@@ -255,6 +260,7 @@ class SVM():
 		num_train = len(self.X)
 		examine_all = 1
 		num_changed = 0
+		num_iter = 1
 		while (num_changed > 0) or examine_all:
 			num_changed = 0
 			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
@@ -263,14 +269,41 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
+					num_iter += 1
+					# Plot the evolution of the solution
+					if self.verbose and (num_iter % print_every == 0):
+						print "This is iteration {}:".format(num_iter)
+						print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+						fig, ax = plt.subplots()
+						grid, ax = self.plot_solution(200, ax)
+						plt.show()
+
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-			if examine_all:
+					num_iter += 1
+					# Plot the evolution of the solution
+					if self.verbose and (num_iter % print_every == 0):
+						print "This is iteration {}:".format(num_iter)
+						print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+						fig, ax = plt.subplots()
+						grid, ax = self.plot_solution(200, ax)
+						plt.show()
+
+			if examine_all == 1:
 				examine_all = 0
 			elif num_changed == 0:
 				examine_all = 1
+
+			# Plot the evolution of the solution
+			if self.verbose and (num_iter % print_every == 0):
+				print "This is iteration {}:".format(num_iter)
+				print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+				fig, ax = plt.subplots()
+				grid, ax = self.plot_solution(200, ax)
+				plt.show()
+
 
 	def predict(self, X_test, epsilon=0):
 		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
