@@ -57,6 +57,7 @@ class SVM():
 		# Our old parameters
 		alpha_n_old = self.params['alpha'][n]
 		alpha_m_old = self.params['alpha'][m]
+		bias_old = self.params['bias']
 
 		# The error based on our old parameters
 		Em = np.dot(self.X[m,:], self.params['w']) + self.params['bias'] - self.y[m]
@@ -75,7 +76,7 @@ class SVM():
 		# If there is not enough change in the parameter skip the update
 		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
 			return 0
-		# print 3
+
 		# Update alphas
 		self.params['alpha'][m] = alpha_m
 		self.params['alpha'][n] = alpha_n
@@ -84,10 +85,20 @@ class SVM():
 		self.params['w'] = np.sum(self.X * self.y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
 		
 		# Compute the bias
-		positive_X = self.X[(self.y==1),:]
-		negative_X = self.X[(self.y==-1),:]
-		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
-									  np.min(np.dot(self.params['w'], positive_X.T)))
+		# Take the bias that enforces the error to be zero for a non-boundary example (support vector).
+		# If such bias can't be found take the average of the bias corresponding to each alpha.
+		bias_m_new = bias_old - Em - (alpha_m - alpha_m_old) * self.y[m] * np.dot(self.X[m,:], self.X[m,:]) - \
+									 (alpha_n - alpha_n_old) * self.y[n] * np.dot(self.X[m,:], self.X[n,:])
+
+		bias_n_new = bias_old - En - (alpha_n - alpha_n_old) * self.y[n] * np.dot(self.X[n,:], self.X[n,:]) - \
+					   			 	 (alpha_m - alpha_m_old) * self.y[m] * np.dot(self.X[m,:], self.X[n,:])
+		if alpha_n > 0:
+			self.params['bias'] = bias_n_new
+		elif alpha_m > 0:
+			self.params['bias'] = bias_m_new
+		else:
+			self.params['bias'] = 0.5 * (bias_n_new + bias_m_new)
+
 		return 1
 
 
