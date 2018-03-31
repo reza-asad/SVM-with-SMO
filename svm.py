@@ -46,62 +46,7 @@ class SVM():
 				alpha_m = np.maximum(alpha_m, 0)
 		return alpha_m, alpha_n
 
-
 	def __solver(self, m, n, epsilon=1e-5):
-		# The utility function is a polynomial of degree 2 in alpha
-		# a * alpha^2 + b * alpha + c
-		# The solution is -b/(2*a)
-		
-		# Skip the case that both alphas are the same.
-		if m == n:
-			return 0
-		if m > n:
-			m ,n = n, m
-		idx = range(len(self.X))
-		idx_subset = idx[:m] + idx[m+1:n] + idx[n+1:]
-		X_subset = self.X[idx_subset,:]
-		y_subset = self.y[idx_subset]
-		alpha_subset = self.params['alpha'][idx_subset]
-		x_m = self.X[m,:]
-		y_m = self.y[m]
-		x_n = self.X[n,:]
-		y_n = self.y[n]
-
-		si = -np.sum(alpha_subset * y_subset)
-		# The coefficient of alpha^2
-		a = np.dot(x_m, x_n) - 0.5 * (np.dot(x_m, x_m) + np.dot(x_n, x_n))
-		# the coefficient of alpha
-		b = np.dot(X_subset, x_m) * y_subset * alpha_subset * y_n - \
-			np.dot(X_subset, x_n) * y_subset * alpha_subset * y_n
-		b = np.sum(b) + 1 - y_n * y_m  + si * y_n * (np.dot(x_m, x_m) - np.dot(x_m, x_n))
-
-		# Updated alpha_m and alpha_n
-		alpha_n = -float(b)/(2*a+epsilon)
-		alpha_m = (si - alpha_n * y_n) * y_m
-
-		# Clip the sollution to satisfy the optimizations constraint.
-		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
-
-		# If there is not enough change in the parameter skip the update
-		alpha_n_old = self.params['alpha'][n]
-		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
-			return 0
-
-		# Update the pair of alpha		
-		self.params['alpha'][m] = alpha_m
-		self.params['alpha'][n] = alpha_n
-
-		# Compute the weights given the new values of alpha
-		self.params['w'] = np.sum(self.X * self.y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
-
-		# Compute the bias
-		positive_X = self.X[(self.y==1),:]
-		negative_X = self.X[(self.y==-1),:]
-		self.params['bias'] = -0.5 * (np.max(np.dot(self.params['w'], negative_X.T)) + \
-									  np.min(np.dot(self.params['w'], positive_X.T)))
-		return 1
-
-	def __advanced_solver(self, m, n, epsilon=1e-5):
 		# Skip the case that both alphas are the same.
 		if m == n:
 			return 0
@@ -149,7 +94,7 @@ class SVM():
 				if abs(Em - E_candidate) > abs(Em - En):
 					En = E_candidate
 					n = i
-			took_step = self.__advanced_solver(m, n)
+			took_step = self.__solver(m, n)
 			if took_step:
 				return 1
 
@@ -157,7 +102,7 @@ class SVM():
 			#		 starting from a random index.
 			random_start_idx = np.random.randint(len(pos_alpha))
 			for i in pos_alpha[random_start_idx:]:
-				took_step = self.__advanced_solver(m, i)
+				took_step = self.__solver(m, i)
 				if took_step:
 					return 1
 
@@ -166,7 +111,7 @@ class SVM():
 		num_train = len(self.X)
 		random_start_idx = np.random.randint(num_train)
 		for i in range(random_start_idx, num_train):
-			took_step = self.__advanced_solver(m, i)
+			took_step = self.__solver(m, i)
 			if took_step:
 				return 1
 		return 0
