@@ -58,6 +58,7 @@ class SVM():
 		alpha_n_old = self.params['alpha'][n]
 		alpha_m_old = self.params['alpha'][m]
 		bias_old = self.params['bias']
+		w_old = self.params['w']
 
 		# The error based on our old parameters
 		Em = np.dot(self.X[m,:], self.params['w']) + self.params['bias'] - self.y[m]
@@ -82,7 +83,8 @@ class SVM():
 		self.params['alpha'][n] = alpha_n
 		
 		# Compute the weights given the new values of alpha
-		self.params['w'] = np.sum(self.X * self.y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
+		self.params['w'] = w_old + (alpha_n - alpha_n_old) * self.y[n] * self.X[n,:] + \
+								   (alpha_m - alpha_m_old) * self.y[m] * self.X[m,:]
 		
 		# Compute the bias
 		# Take the bias that enforces the error to be zero for a non-boundary example (support vector).
