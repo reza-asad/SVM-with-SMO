@@ -19,8 +19,8 @@ class SVM():
 		# initialize the parameters of the model
 		N, D = X.shape
 		self.params['alpha'] = np.zeros(N)
-		self.params['w'] = np.ones(D)
-		self.params['bias'] = 1
+		self.params['w'] = np.zeros(D)
+		self.params['bias'] = 0
 
 	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
@@ -53,26 +53,36 @@ class SVM():
 
 		if m > n:
 			m, n = n, m
+
+		# Our old parameters
+		alpha_n_old = self.params['alpha'][n]
+		alpha_m_old = self.params['alpha'][m]
+
+		# The error based on our old parameters
 		Em = np.dot(self.X[m,:], self.params['w']) + self.params['bias'] - self.y[m]
 		En = np.dot(self.X[n,:], self.params['w']) + self.params['bias'] - self.y[n]
 
 		k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
 			2 * np.dot(self.X[n,:], self.X[m,:])
 
-		alpha_n = self.params['alpha'][n] + self.y[n] * (En - Em) / (k+epsilon)
-		alpha_m = self.params['alpha'][m] + self.y[m] * self.y[n] * (self.params['alpha'][n] - alpha_n)
+		# Computing the new alphas
+		alpha_n = alpha_n_old + self.y[n] * (En - Em) / (k+epsilon)
+		alpha_m = alpha_m_old + self.y[m] * self.y[n] * (alpha_n_old - alpha_n)
+
+		# Clip the solution to make sure that it satisfies the constraint.
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 
 		# If there is not enough change in the parameter skip the update
-		alpha_n_old = self.params['alpha'][n]
 		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
 			return 0
-
+		# print 3
 		# Update alphas
 		self.params['alpha'][m] = alpha_m
 		self.params['alpha'][n] = alpha_n
+		
 		# Compute the weights given the new values of alpha
 		self.params['w'] = np.sum(self.X * self.y[:,np.newaxis] * self.params['alpha'][:,np.newaxis], axis=0)
+		
 		# Compute the bias
 		positive_X = self.X[(self.y==1),:]
 		negative_X = self.X[(self.y==-1),:]
