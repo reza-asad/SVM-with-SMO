@@ -30,6 +30,20 @@ class SVM():
 															temp)
 		return result
 
+	def __is_data_linearly_seperable(self):
+		_, D = self.X.shape
+		for d in range(D):
+			min_val = self.X[self.y==1,d:d+1].min()
+			max_val = self.X[self.y==1,d:d+1].max()
+
+			# This checks if in dimension d the data for one class is
+			# within the range of data for the other class. If thats te
+			# case we have a non linearly seperable dataset.
+			I = (min_val < self.X[self.y == -1, d:d+1]) & \
+				(self.X[self.y == -1, d:d+1] < max_val)
+			return sum(I) == 0
+
+
 	def __clip(self,m, n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
 			gamma = self.params['alpha'][m] + self.params['alpha'][n]
@@ -138,7 +152,11 @@ class SVM():
 				return 1
 		return 0
 
-	def train(self, print_every=500):
+	def train(self, print_every=500, check_linearity=True):
+		if check_linearity:
+			if not self.__is_data_linearly_seperable():
+				print "Data is not linearly seperable. Please use the svm_advanced.py"
+				return 
 		def print_obj_value():
 			if (self.verbose) and (num_iter % print_every == 0):
 				print "This is iteration {}".format(num_iter)
