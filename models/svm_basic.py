@@ -45,7 +45,7 @@ class SVM():
 				alpha_m = np.maximum(alpha_m, 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-3):
+	def __solver(self, m, n, epsilon=1e-7):
 		# Skip the case that both alphas are the same.
 		if m == n:
 			return 0
@@ -138,10 +138,11 @@ class SVM():
 				return 1
 		return 0
 
-	def train(self):
+	def train(self, print_every=500):
 		num_train = len(self.X)
 		examine_all = 1
 		num_changed = 0
+		num_iter = 1
 		while (num_changed > 0) or examine_all:
 			num_changed = 0
 			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
@@ -150,13 +151,22 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					self.objective_func_values.append(self.__evaluate_objective_function())
+					obj_value = self.__evaluate_objective_function()
+					self.objective_func_values.append(obj_value)
+					if (self.verbose) and (num_iter % print_every == 0):
+						print "The value of the objective function is: {}".format(obj_value)
+					num_iter += 1
 
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					self.objective_func_values.append(self.__evaluate_objective_function())
+					obj_value = self.__evaluate_objective_function()
+					self.objective_func_values.append(obj_value)
+					if (self.verbose) and (num_iter % print_every == 0):
+						print "This is iteration {}".format(num_iter)
+						print "The value of the objective function is: {}".format(obj_value)
+					num_iter += 1
 
 			if examine_all == 1:
 				examine_all = 0
