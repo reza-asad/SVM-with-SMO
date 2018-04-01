@@ -139,6 +139,11 @@ class SVM():
 		return 0
 
 	def train(self, print_every=500):
+		def print_obj_value():
+			if (self.verbose) and (num_iter % print_every == 0):
+				print "This is iteration {}".format(num_iter)
+				print "The value of the objective function is: {}".format(obj_value)
+
 		num_train = len(self.X)
 		examine_all = 1
 		num_changed = 0
@@ -151,21 +156,21 @@ class SVM():
 				for i in range(num_train):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					obj_value = self.__evaluate_objective_function()
-					self.objective_func_values.append(obj_value)
-					if (self.verbose) and (num_iter % print_every == 0):
-						print "The value of the objective function is: {}".format(obj_value)
+					# Only add the obj value if a change was made
+					if choose_succeed:
+						obj_value = self.__evaluate_objective_function()
+						self.objective_func_values.append(obj_value)
+					print_obj_value()
 					num_iter += 1
 
 			else:
 				for i in pos_alpha:
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
-					obj_value = self.__evaluate_objective_function()
-					self.objective_func_values.append(obj_value)
-					if (self.verbose) and (num_iter % print_every == 0):
-						print "This is iteration {}".format(num_iter)
-						print "The value of the objective function is: {}".format(obj_value)
+					if choose_succeed:
+						obj_value = self.__evaluate_objective_function()
+						self.objective_func_values.append(obj_value)
+					print_obj_value()
 					num_iter += 1
 
 			if examine_all == 1:
