@@ -1,7 +1,6 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-from utility import *
 
 
 class SVM():
@@ -46,7 +45,7 @@ class SVM():
 				alpha_m = np.maximum(alpha_m, 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-5):
+	def __solver(self, m, n, epsilon=1e-3):
 		# Skip the case that both alphas are the same.
 		if m == n:
 			return 0
