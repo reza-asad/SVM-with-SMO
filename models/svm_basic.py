@@ -3,13 +3,12 @@ import random
 import matplotlib.pyplot as plt
 
 
-class SVM():
+class SVM(object):
 	# Comments later
-	def __init__(self, X, y, reg=0.0, dtype=np.float64, verbose=False):
+	def __init__(self, X, y, dtype=np.float64, verbose=False):
 		self.X = X
 		self.y = y
 
-		self.reg = reg
 		self.dtype = dtype
 		self.verbose = verbose
 		self.params = {}
