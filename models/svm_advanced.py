@@ -6,8 +6,8 @@ from svm_basic import *
 
 
 class SVMAdvanced(SVM):
-	
-	def train(self, print_every=500, check_linearity=True):
+
+	def train(self, print_every=500):
 		super(SVMAdvanced, self).train(check_linearity=False, print_every=print_every)
 
 
