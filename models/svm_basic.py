@@ -87,7 +87,7 @@ class SVM(object):
 		alpha_m, alpha_n = self.__clip(m, n, alpha_m, alpha_n)
 
 		# If there is not enough change in the parameter skip the update
-		if abs(alpha_n - alpha_n_old) < (epsilon * (alpha_n + alpha_n_old + epsilon)):
+		if abs(alpha_n - alpha_n_old) < (alpha_n + alpha_n_old + epsilon) * epsilon:
 			return 0
 
 		# Update alphas
