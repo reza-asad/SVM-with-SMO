@@ -7,7 +7,23 @@ from svm_basic import *
 
 class SVMAdvanced(SVM):
 	def __clip(self, m ,n, alpha_m, alpha_n):
-		pass
+		if self.y[m] * self.y[n] == 1:
+			gamma = self.params['alpha'][m] + self.params['alpha'][n]
+			if gamma <= self.C:
+				alpha_n = np.maximum(np.minimum(alpha_n, gamma), 0)
+				alpha_m = np.maximum(np.minimum(alpha_m, gamma), 0)
+			else:
+				alpha_n = np.maximum(np.minimum(alpha_n, self.C), gamma-self.C)
+				alpha_m = np.maximum(np.minimum(alpha_m, self.C), gamma-self.C)
+		elif self.y[m] * self.y[n] == -1:
+			gamma = self.params['alpha'][m] - self.params['alpha'][n]
+			if gamma > 0:
+				alpha_n = np.maximum(np.minimum(alpha_n, self.C - gamma), 0) 
+				alpha_m = np.maximum(np.minimum(alpha_m, self.C), gamma)
+			else:
+				alpha_n = np.maximum(np.minimum(alpha_n, self.C), -gamma)
+				alpha_m = np.maximum(np.minimum(alpha_m, gamma + self.C), 0)
+		return alpha_m, alpha_n
 
 	def __solver(self, m, n, epsilon=1e-7):
 		# Skip the case that both the indexs for alpha are the same
