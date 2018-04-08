@@ -20,7 +20,7 @@ class SVM(object):
 		self.params['w'] = np.zeros(D)
 		self.params['bias'] = 0
 
-	def __evaluate_objective_function(self):
+	def evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
 		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
 														    		np.dot(self.X,
@@ -151,7 +151,8 @@ class SVM(object):
 				return 1
 		return 0
 
-	def train(self, print_every=500, check_linearity=True):
+	def train(self, print_every=500, check_linearity=True, alpha_lower_bound=0, 
+			  alpha_upper_bound=float('inf')):
 		if check_linearity:
 			if not self.__is_data_linearly_seperable():
 				print "Data is not linearly seperable. Please use the svm_advanced.py"
@@ -167,7 +168,8 @@ class SVM(object):
 		num_iter = 1
 		while (num_changed > 0) or examine_all:
 			num_changed = 0
-			pos_alpha = [j for j in range(num_train) if self.params['alpha'][j] > 0]
+			pos_alpha = [j for j in range(num_train) if (alpha_lower_bound < self.params['alpha'][j]) and \
+														(alpha_upper_bound > self.params['alpha'][j])]
 			# Loop through all the examples and pick the first alpha
 			if examine_all:
 				for i in range(num_train):
@@ -175,7 +177,7 @@ class SVM(object):
 					num_changed += choose_succeed
 					# Only add the obj value if a change was made
 					if choose_succeed:
-						obj_value = self.__evaluate_objective_function()
+						obj_value = self.evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1
@@ -185,7 +187,7 @@ class SVM(object):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
 					if choose_succeed:
-						obj_value = self.__evaluate_objective_function()
+						obj_value = self.evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1

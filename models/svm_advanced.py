@@ -6,9 +6,9 @@ from svm_basic import *
 
 
 class SVMAdvanced(SVM):
-	def __init__(self, reg=C):
-		super(SVMAdvanced, self).__init__(X, y, dtype=np.float64, verbose=False)
-		self.C = C
+	def __init__(self, X, y, reg=100.0, dtype=np.float64, verbose=False):
+		super(SVMAdvanced, self).__init__(X, y, dtype=dtype, verbose=verbose)
+		self.C = reg
 		self.Errors = np.dot(self.X, self.params['w']) + self.params['bias'] - self.y
 
 	def __clip(self, m ,n, alpha_m, alpha_n):
@@ -97,7 +97,7 @@ class SVMAdvanced(SVM):
 		# Case 2: For the rest of alphas update the errors using a formula
 		#		  similar to the one for computing the bias.
 		num_train = len(self.X)
-		non_optimized = [i for i in range(num_train) if i != zero_error_example]
+		non_optimized = [i for i in range(num_train) if i not in [m,n]] 
 		self.Errors[non_optimized] = self.Errors[non_optimized] + self.y[m] * (alpha_m - alpha_m_old) * \
 																  np.dot(self.X[m,:], self.X[non_optimized,:].T) + \
 									 							  self.y[n] * (alpha_n - alpha_n_old) * \
@@ -107,7 +107,7 @@ class SVMAdvanced(SVM):
 		# All the updates went through return that the update was successfull
 		return 1
 
-	def __choose_second_alpha(m, pos_alpha):
+	def __choose_second_alpha(self, m, pos_alpha):
 		if len(pos_alpha) > 0:
 			# Case1: Choose the second alpha over non boundary examples with max error
 			n = np.argmax(np.abs(self.Errors[m] - self.Errors))
@@ -126,7 +126,7 @@ class SVMAdvanced(SVM):
 		# Case3: Choose the second alpha over all the examples starting from a 
 		#		 random index.
 		num_train = len(self.X)
-		start_idx = np.random.randint(start_idx, num_train)
+		start_idx = np.random.randint(num_train)
 		for i in range(start_idx, num_train):
 			took_step = self.__solver(m, i)
 			if took_step:
@@ -136,8 +136,67 @@ class SVMAdvanced(SVM):
 		return 0
 
 	def train(self, print_every=500):
-		super(SVMAdvanced, self).train(check_linearity=False, print_every=print_every)
+		def print_obj_value():
+			if (self.verbose) and (num_iter % print_every == 0):
+				print "This is iteration {}".format(num_iter)
+				print "The value of the objective function is: {}".format(obj_value)
 
+		num_train = len(self.X)
+		examine_all = 1
+		num_changed = 0
+		num_iter = 1
+		while (num_changed > 0) or examine_all:
+			num_changed = 0
+			pos_alpha = [j for j in range(num_train) if (0 < self.params['alpha'][j]) and \
+														(self.params['alpha'][j]) < self.C]
+			# Loop through all the examples and pick the first alpha
+			if examine_all:
+				for i in range(num_train):
+					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
+					num_changed += choose_succeed
+					# Only add the obj value if a change was made
+					if choose_succeed:
+						obj_value = super(SVMAdvanced, self).evaluate_objective_function()
+						self.objective_func_values.append(obj_value)
+					print_obj_value()
+					num_iter += 1
+
+			else:
+				for i in pos_alpha:
+					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
+					num_changed += choose_succeed
+					if choose_succeed:
+						obj_value = super(SVMAdvanced, self).evaluate_objective_function()
+						self.objective_func_values.append(obj_value)
+					print_obj_value()
+					num_iter += 1
+
+			if examine_all == 1:
+				examine_all = 0
+			elif num_changed == 0:
+				examine_all = 1
+
+		# Plot the final model
+		if self.verbose:
+			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
+			fig, ax = plt.subplots()
+			grid, ax = self.plot_solution(200, ax)
+			plt.xlabel('petal_width')
+			plt.ylabel('petal_length')
+			plt.show()
+
+	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
+		x_range = np.linspace(self.X[:,0].min(), self.X[:,0].max(), resolution)
+		y_range = np.linspace(self.X[:,1].min(), self.X[:,1].max(), resolution)
+		grid = [[self.predict(np.array([xi, yi])) for xi in x_range] for yi in y_range]
+		grid = np.array(grid)
+
+		ax.contour(x_range, y_range, grid, levels=(-1-self.C,0,1+self.C), linewidths=(1,1,1),
+                   linestyles=('--','-','--'), colors=colors)         
+		ax.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap=plt.cm.viridis, lw=0, alpha=0.5)
+		mask = self.params['alpha'] > 0
+		ax.scatter(self.X[:,0][mask], self.X[:,1][mask], c=self.y[mask], cmap=plt.cm.viridis, s=100)
+		return grid, ax
 
 
 
