@@ -6,6 +6,11 @@ from svm_basic import *
 
 
 class SVMAdvanced(SVM):
+	def __init__(self, reg=C):
+		super(SVMAdvanced, self).__init__(X, y, dtype=np.float64, verbose=False)
+		self.C = C
+		self.Errors = np.dot(self.X, self.params['w']) + self.params['bias'] - self.y
+
 	def __clip(self, m ,n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
 			gamma = self.params['alpha'][m] + self.params['alpha'][n]
@@ -52,7 +57,7 @@ class SVMAdvanced(SVM):
 		alpha_m, alpha_n = self.__clip(m, n , alpha_m, alpha_n)
 
 		# If there are not enough changes in the alpaha parameters skip the update
-		if np.abs(alpha_m - alpha_n) < (alpha_m + alpha_n + epsilon) * epsilon:
+		if np.abs(alpha_n - alpha_n_old) < (alpha_n + alpha_n_old + epsilon) * epsilon:
 			return 0
 
 		# Update the alphas if the change is significant
