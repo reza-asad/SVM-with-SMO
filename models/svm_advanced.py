@@ -83,34 +83,34 @@ class SVMAdvanced(SVM):
 
 		if (0 < alpha_m) and (alpha_m < self.C):
 			self.params['bias'] = bias_m_new
+			self.Errors[m] = 0
+			zero_error_index = m
 		elif (0 < alpha_n) and (alpha_n < self.C):
 			self.params['bias'] = bias_n_new
+			self.Errors[n] = 0
+			zero_error_index = n
 		else:
 			self.params['bias'] = 0.5 * (bias_n_new + bias_m_new)
+			zero_error_index = None
 
 		# Update the errors
-		# Case 1: If the alphas are non-boundary set the error to 0
-		for i, alpha in {m: alpha_m, n: alpha_n}.items():
-			if (0 < alpha) and (alpha < self.C):
-				self.Errors[i] = 0
-
 		# Case 2: For the rest of alphas update the errors using a formula
 		#		  similar to the one for computing the bias.
 		num_train = len(self.X)
-		non_optimized = [i for i in range(num_train) if i not in [m,n]] 
+		non_optimized = [i for i in range(num_train) if i != zero_error_index] 
 		self.Errors[non_optimized] = self.Errors[non_optimized] + self.y[m] * (alpha_m - alpha_m_old) * \
 																  np.dot(self.X[m,:], self.X[non_optimized,:].T) + \
 									 							  self.y[n] * (alpha_n - alpha_n_old) * \
 									 							  np.dot(self.X[n,:], self.X[non_optimized,:].T) + \
 									 							  (self.params['bias'] - bias_old)
-
 		# All the updates went through return that the update was successfull
 		return 1
 
 	def __choose_second_alpha(self, m, pos_alpha):
 		if len(pos_alpha) > 0:
 			# Case1: Choose the second alpha over non boundary examples with max error
-			n = np.argmax(np.abs(self.Errors[m] - self.Errors))
+			i = np.argmax(np.abs(self.Errors[m] - self.Errors[pos_alpha]))
+			n = pos_alpha[i]
 			took_step = self.__solver(m, n)
 			if took_step:
 				return 1
