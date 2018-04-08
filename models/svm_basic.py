@@ -151,8 +151,7 @@ class SVM(object):
 				return 1
 		return 0
 
-	def train(self, print_every=500, check_linearity=True, alpha_lower_bound=0, 
-			  alpha_upper_bound=float('inf')):
+	def train(self, print_every=500, check_linearity=True):
 		if check_linearity:
 			if not self.__is_data_linearly_seperable():
 				print "Data is not linearly seperable. Please use the svm_advanced.py"
@@ -168,8 +167,7 @@ class SVM(object):
 		num_iter = 1
 		while (num_changed > 0) or examine_all:
 			num_changed = 0
-			pos_alpha = [j for j in range(num_train) if (alpha_lower_bound < self.params['alpha'][j]) and \
-														(alpha_upper_bound > self.params['alpha'][j])]
+			pos_alpha = [j for j in range(num_train) if 0 < self.params['alpha'][j]]
 			# Loop through all the examples and pick the first alpha
 			if examine_all:
 				for i in range(num_train):
@@ -201,7 +199,7 @@ class SVM(object):
 		if self.verbose:
 			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
 			fig, ax = plt.subplots()
-			grid, ax = self.plot_solution(200, ax)
+			grid, ax = self.plot_solution(500, ax)
 			plt.xlabel('petal_width')
 			plt.ylabel('petal_length')
 			plt.show()
