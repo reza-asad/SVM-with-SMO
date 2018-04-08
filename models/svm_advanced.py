@@ -83,18 +83,18 @@ class SVMAdvanced(SVM):
 
 		if (0 < alpha_m) and (alpha_m < self.C):
 			self.params['bias'] = bias_m_new
-			self.Errors[m] = 0
-			zero_error_example = m
 		elif (0 < alpha_n) and (alpha_n < self.C):
 			self.params['bias'] = bias_n_new
-			self.Errors[n] = 0
-			zero_error_example = n
 		else:
 			self.params['bias'] = 0.5 * (bias_n_new + bias_m_new)
-			zero_error_example = None
 
 		# Update the errors
-		# Case 2: For boundary examples update the errors using a formula
+		# Case 1: If the alphas are non-boundary set the error to 0
+		for i, alpha in {m: alpha_m, n: alpha_n}.items():
+			if (0 < alpha) and (alpha < self.C):
+				self.Errors[i] = 0
+
+		# Case 2: For the rest of alphas update the errors using a formula
 		#		  similar to the one for computing the bias.
 		num_train = len(self.X)
 		non_optimized = [i for i in range(num_train) if i != zero_error_example]
