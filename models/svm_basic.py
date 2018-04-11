@@ -3,7 +3,7 @@ import random
 import matplotlib.pyplot as plt
 
 
-class SVM(object):
+class SVM():
 	# Comments later
 	def __init__(self, X, y, dtype=np.float64, verbose=False):
 		self.X = X
@@ -20,7 +20,7 @@ class SVM(object):
 		self.params['w'] = np.zeros(D)
 		self.params['bias'] = 0
 
-	def evaluate_objective_function(self):
+	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
 		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
 														    		np.dot(self.X,
@@ -58,7 +58,7 @@ class SVM(object):
 				alpha_m = np.maximum(alpha_m, 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-7):
+	def __solver(self, m, n, epsilon=1e-10):
 		# Skip the case that both alphas are the same.
 		if m == n:
 			return 0
@@ -175,7 +175,7 @@ class SVM(object):
 					num_changed += choose_succeed
 					# Only add the obj value if a change was made
 					if choose_succeed:
-						obj_value = self.evaluate_objective_function()
+						obj_value = self.__evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1
@@ -185,7 +185,7 @@ class SVM(object):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
 					if choose_succeed:
-						obj_value = self.evaluate_objective_function()
+						obj_value = self.__evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1

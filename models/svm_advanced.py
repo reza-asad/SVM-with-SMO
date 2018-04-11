@@ -5,11 +5,33 @@ import matplotlib.pyplot as plt
 from svm_basic import *
 
 
-class SVMAdvanced(SVM):
-	def __init__(self, X, y, reg=100.0, dtype=np.float64, verbose=False):
-		super(SVMAdvanced, self).__init__(X, y, dtype=dtype, verbose=verbose)
-		self.C = reg
+class SVMAdvanced():
+	def __init__(self, X, y, C=float('inf'), dtype=np.float64, verbose=False):
+		self.X = X
+		self.y = y
+
+		self.dtype = dtype
+		self.verbose = verbose
+		self.params = {}
+		self.objective_func_values = []
+
+		# initialize the parameters of the model
+		N, D = X.shape
+		self.params['alpha'] = np.zeros(N)
+		self.params['w'] = np.zeros(D)
+		self.params['bias'] = 0
+
+		self.C = C
 		self.Errors = np.dot(self.X, self.params['w']) + self.params['bias'] - self.y
+
+	def __evaluate_objective_function(self):
+		temp = self.y * self.params['alpha']
+		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
+														    		np.dot(self.X,
+														   		    	   self.X.T)
+														    		),
+															temp)
+		return result
 
 	def __clip(self, m ,n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
@@ -156,7 +178,7 @@ class SVMAdvanced(SVM):
 					num_changed += choose_succeed
 					# Only add the obj value if a change was made
 					if choose_succeed:
-						obj_value = super(SVMAdvanced, self).evaluate_objective_function()
+						obj_value = self.__evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1
@@ -166,7 +188,7 @@ class SVMAdvanced(SVM):
 					choose_succeed = self.__choose_second_alpha(i, pos_alpha)
 					num_changed += choose_succeed
 					if choose_succeed:
-						obj_value = super(SVMAdvanced, self).evaluate_objective_function()
+						obj_value = self.__evaluate_objective_function()
 						self.objective_func_values.append(obj_value)
 					print_obj_value()
 					num_iter += 1
@@ -184,6 +206,10 @@ class SVMAdvanced(SVM):
 			plt.xlabel('petal_width')
 			plt.ylabel('petal_length')
 			plt.show()
+
+	def predict(self, X_test):
+		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
+		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
 		x_range = np.linspace(self.X[:,0].min(), self.X[:,0].max(), resolution)
