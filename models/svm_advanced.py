@@ -22,7 +22,7 @@ class SVMAdvanced():
 		self.params['bias'] = 0
 
 		self.C = C
-		self.Errors = np.dot(self.X, self.params['w']) + self.params['bias'] - self.y
+		self.Errors = self.predict(self.X) - self.y
 
 	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
@@ -52,7 +52,7 @@ class SVMAdvanced():
 				alpha_m = np.maximum(np.minimum(alpha_m, gamma + self.C), 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-5):
+	def __solver(self, m, n, epsilon=1e-7):
 		# Skip the case that both the indexs for alpha are the same
 		if m == n:
 			return 0
