@@ -39,8 +39,19 @@ class SVMAdvanced():
 		return result
 
 	def __kernel(self, X, Z):
-		pass
-		
+		# Case1: If kernel_choice is Gaussian or Linear use them
+		# Case 2: Try to use the kernel function provided by the user.
+		# Case 3: Use the dot product. 
+		if kernel_choice not in cfg.SUPPORTED_KERNELS:
+			if kernel_function is None:
+				return np.dot(X, Z)
+			else:
+				return kernel_function(X, Z)
+		else:
+			kernel = cfg.SUPPORTED_KERNELS[kernel_choice]
+			return kernel(X, Z)
+
+
 	def __clip(self, m ,n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
 			gamma = self.params['alpha'][m] + self.params['alpha'][n]
