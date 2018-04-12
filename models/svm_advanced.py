@@ -52,7 +52,7 @@ class SVMAdvanced():
 				alpha_m = np.maximum(np.minimum(alpha_m, gamma + self.C), 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-7):
+	def __solver(self, m, n, epsilon=1e-5):
 		# Skip the case that both the indexs for alpha are the same
 		if m == n:
 			return 0
@@ -202,7 +202,7 @@ class SVMAdvanced():
 		if self.verbose:
 			print "(w:{}, b:{})".format(self.params['w'], self.params['bias'])
 			fig, ax = plt.subplots()
-			grid, ax = self.plot_solution(200, ax)
+			grid, ax = self.plot_solution(100, ax)
 			plt.xlabel('petal_width')
 			plt.ylabel('petal_length')
 			plt.show()
