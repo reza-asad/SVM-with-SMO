@@ -3,10 +3,12 @@ import random
 import matplotlib.pyplot as plt
 
 from svm_basic import *
+import config as cfg
 
 
 class SVMAdvanced():
-	def __init__(self, X, y, C=float('inf'), dtype=np.float64, verbose=False):
+	def __init__(self, X, y, C=float('inf'), kernel_choice=None, kernel_function=None, 
+				 dtype=np.float64, verbose=False):
 		self.X = X
 		self.y = y
 
@@ -24,6 +26,9 @@ class SVMAdvanced():
 		self.C = C
 		self.Errors = self.predict(self.X) - self.y
 
+		self.kernel_choice = kernel_choice
+		self.kernel_function = kernel_function
+
 	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
 		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
@@ -33,6 +38,9 @@ class SVMAdvanced():
 															temp)
 		return result
 
+	def __kernel(self, X, Z):
+		pass
+		
 	def __clip(self, m ,n, alpha_m, alpha_n):
 		if self.y[m] * self.y[n] == 1:
 			gamma = self.params['alpha'][m] + self.params['alpha'][n]
@@ -68,8 +76,8 @@ class SVMAdvanced():
 		w_old = self.params['w']
 
 		# This is the curvature of the polynomial function in terms of alpha_n
-		k = -np.dot(self.X[m,:], self.X[m,:]) - np.dot(self.X[n,:], self.X[n,:]) + \
-			2 * np.dot(self.X[n,:], self.X[m,:])
+		k = -self.__kernel(self.X[m,:], self.X[m,:]) - self.__kernel(self.X[n,:], self.X[n,:]) + \
+			2 * self.__kernel(self.X[n,:], self.X[m,:])
 
 		# Compute the new alphas
 		alpha_n = alpha_n_old + self.y[n] * (self.Errors[n] - self.Errors[m]) / (k + epsilon)
@@ -94,14 +102,14 @@ class SVMAdvanced():
 		# Take the bias that enforces the error to be zero for a non-boundary example (support vector).
 		# If such bias can't be found take the average of the bias corresponding to each alpha.
 		bias_m_new = bias_old - self.Errors[m] - (alpha_m - alpha_m_old) * self.y[m] * \
-																		   np.dot(self.X[m,:], self.X[m,:]) - \
+																		   self.__kernel(self.X[m,:], self.X[m,:]) - \
 					 							 (alpha_n - alpha_n_old) * self.y[n] * \
-					 							 						   np.dot(self.X[m,:], self.X[n,:])
+					 							 						   self.__kernel(self.X[m,:], self.X[n,:])
 
 		bias_n_new = bias_old - self.Errors[n] - (alpha_n - alpha_n_old) * self.y[n] * \
-																		   np.dot(self.X[n,:], self.X[n,:]) - \
+																		   self.__kernel(self.X[n,:], self.X[n,:]) - \
 												 (alpha_m - alpha_m_old) * self.y[m] * \
-												 						   np.dot(self.X[m,:], self.X[n,:])
+												 						   self.__kernel(self.X[m,:], self.X[n,:])
 
 		if (0 < alpha_m) and (alpha_m < self.C):
 			self.params['bias'] = bias_m_new
@@ -121,9 +129,9 @@ class SVMAdvanced():
 		num_train = len(self.X)
 		non_optimized = [i for i in range(num_train) if i != zero_error_index] 
 		self.Errors[non_optimized] = self.Errors[non_optimized] + self.y[m] * (alpha_m - alpha_m_old) * \
-																  np.dot(self.X[m,:], self.X[non_optimized,:].T) + \
+																  self.__kernel(self.X[m,:], self.X[non_optimized,:].T) + \
 									 							  self.y[n] * (alpha_n - alpha_n_old) * \
-									 							  np.dot(self.X[n,:], self.X[non_optimized,:].T) + \
+									 							  self.__kernel(self.X[n,:], self.X[non_optimized,:].T) + \
 									 							  (self.params['bias'] - bias_old)
 		# All the updates went through return that the update was successfull
 		return 1
@@ -209,8 +217,7 @@ class SVMAdvanced():
 
 	def predict(self, X_test):
 		temp = self.params['alpha'] * self.y
-		y_pred = np.sum(np.dot(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
-		# y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
+		y_pred = np.sum(self.kernel(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
 		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
