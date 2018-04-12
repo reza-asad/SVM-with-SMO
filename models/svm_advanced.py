@@ -208,13 +208,15 @@ class SVMAdvanced():
 			plt.show()
 
 	def predict(self, X_test):
-		y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
+		temp = self.params['alpha'] * self.y
+		y_pred = np.sum(np.dot(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
+		# y_pred = np.dot(X_test, self.params['w']) + self.params['bias']
 		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
 		x_range = np.linspace(self.X[:,0].min(), self.X[:,0].max(), resolution)
 		y_range = np.linspace(self.X[:,1].min(), self.X[:,1].max(), resolution)
-		grid = [[self.predict(np.array([xi, yi])) for xi in x_range] for yi in y_range]
+		grid = [[self.predict(np.array([[xi, yi]]))[0] for xi in x_range] for yi in y_range]
 		grid = np.array(grid)
 
 		ax.contour(x_range, y_range, grid, levels=(-1,0,1), linewidths=(1,1,1),
