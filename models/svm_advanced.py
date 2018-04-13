@@ -34,8 +34,8 @@ class SVMAdvanced():
 	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
 		result = np.sum(self.params['alpha']) - 0.5 * np.dot(np.dot(temp, 
-														    		np.dot(self.X,
-														   		    	   self.X.T)
+														    		self.__kernel(self.X,
+														    					  self.X)
 														    		),
 															temp)
 		return result
@@ -226,7 +226,7 @@ class SVMAdvanced():
 			grid, ax = self.plot_solution(100, ax)
 			plt.xlabel('petal_width')
 			plt.ylabel('petal_length')
-			plt.rcParams["figure.figsize"] = [8, 6]
+			plt.figure(figsize=(8,6))
 			plt.show()
 
 	def predict(self, X_test):
