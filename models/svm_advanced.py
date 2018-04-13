@@ -23,11 +23,12 @@ class SVMAdvanced():
 		self.params['w'] = np.zeros(D)
 		self.params['bias'] = 0
 
+		self.kernel_choice = kernel_choice
+		self.kernel_function = kernel_function
+
 		self.C = C
 		self.Errors = self.predict(self.X) - self.y
 
-		self.kernel_choice = kernel_choice
-		self.kernel_function = kernel_function
 
 	def __evaluate_objective_function(self):
 		temp = self.y * self.params['alpha']
@@ -42,11 +43,11 @@ class SVMAdvanced():
 		# Case1: If kernel_choice is Gaussian or Linear use them
 		# Case 2: Try to use the kernel function provided by the user.
 		# Case 3: Use the dot product. 
-		if kernel_choice not in cfg.SUPPORTED_KERNELS:
-			if kernel_function is None:
+		if self.kernel_choice not in cfg.SUPPORTED_KERNELS:
+			if self.kernel_function is None:
 				return np.dot(X, Z)
 			else:
-				return kernel_function(X, Z)
+				return self.kernel_function(X, Z)
 		else:
 			kernel = cfg.SUPPORTED_KERNELS[kernel_choice]
 			return kernel(X, Z)
@@ -71,7 +72,7 @@ class SVMAdvanced():
 				alpha_m = np.maximum(np.minimum(alpha_m, gamma + self.C), 0)
 		return alpha_m, alpha_n
 
-	def __solver(self, m, n, epsilon=1e-7):
+	def __solver(self, m, n, epsilon=1e-5):
 		# Skip the case that both the indexs for alpha are the same
 		if m == n:
 			return 0
@@ -228,7 +229,7 @@ class SVMAdvanced():
 
 	def predict(self, X_test):
 		temp = self.params['alpha'] * self.y
-		y_pred = np.sum(self.kernel(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
+		y_pred = np.sum(self.__kernel(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
 		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
