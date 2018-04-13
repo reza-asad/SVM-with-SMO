@@ -219,7 +219,7 @@ class SVM():
 		ax.contour(x_range, y_range, grid, levels=(-1,0,1), linewidths=(1,1,1),
                    linestyles=('--','-','--'), colors=colors)         
 		ax.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap=plt.cm.viridis, lw=0, alpha=0.5)
-		mask = self.params['alpha'] > 0
+		mask = self.params['alpha'] != 0
 		ax.scatter(self.X[:,0][mask], self.X[:,1][mask], c=self.y[mask], cmap=plt.cm.viridis, s=100)
 		return grid, ax
 

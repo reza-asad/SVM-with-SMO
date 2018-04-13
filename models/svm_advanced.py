@@ -8,7 +8,7 @@ import config as cfg
 
 class SVMAdvanced():
 	def __init__(self, X, y, C=float('inf'), kernel_choice=None, kernel_function=None, 
-				 dtype=np.float64, verbose=False):
+				 dtype=np.float64, verbose=False, kernel_params={}):
 		self.X = X
 		self.y = y
 
@@ -25,6 +25,7 @@ class SVMAdvanced():
 
 		self.kernel_choice = kernel_choice
 		self.kernel_function = kernel_function
+		self.kernel_params = kernel_params
 
 		self.C = C
 		self.Errors = self.predict(self.X) - self.y
@@ -45,12 +46,12 @@ class SVMAdvanced():
 		# Case 3: Use the dot product. 
 		if self.kernel_choice not in cfg.SUPPORTED_KERNELS:
 			if self.kernel_function is None:
-				return np.dot(X, Z)
+				return np.dot(X, Z.T)
 			else:
-				return self.kernel_function(X, Z)
+				return self.kernel_function(X, Z, self.kernel_params)
 		else:
-			kernel = cfg.SUPPORTED_KERNELS[kernel_choice]
-			return kernel(X, Z)
+			kernel = cfg.SUPPORTED_KERNELS[self.kernel_choice]
+			return kernel(X, Z, self.kernel_params)
 
 
 	def __clip(self, m ,n, alpha_m, alpha_n):
@@ -141,9 +142,9 @@ class SVMAdvanced():
 		num_train = len(self.X)
 		non_optimized = [i for i in range(num_train) if i != zero_error_index] 
 		self.Errors[non_optimized] = self.Errors[non_optimized] + self.y[m] * (alpha_m - alpha_m_old) * \
-																  self.__kernel(self.X[m,:], self.X[non_optimized,:].T) + \
+																  self.__kernel(self.X[m,:], self.X[non_optimized,:]) + \
 									 							  self.y[n] * (alpha_n - alpha_n_old) * \
-									 							  self.__kernel(self.X[n,:], self.X[non_optimized,:].T) + \
+									 							  self.__kernel(self.X[n,:], self.X[non_optimized,:]) + \
 									 							  (self.params['bias'] - bias_old)
 		# All the updates went through return that the update was successfull
 		return 1
@@ -225,11 +226,12 @@ class SVMAdvanced():
 			grid, ax = self.plot_solution(100, ax)
 			plt.xlabel('petal_width')
 			plt.ylabel('petal_length')
+			plt.rcParams["figure.figsize"] = [8, 6]
 			plt.show()
 
 	def predict(self, X_test):
 		temp = self.params['alpha'] * self.y
-		y_pred = np.sum(self.__kernel(self.X, X_test.T) * temp[:,np.newaxis], axis=0) + self.params['bias']
+		y_pred = np.sum(self.__kernel(self.X, X_test) * temp[:,np.newaxis], axis=0) + self.params['bias']
 		return y_pred
 
 	def plot_solution(self, resolution, ax, colors=['b', 'k', 'r']):
@@ -241,7 +243,7 @@ class SVMAdvanced():
 		ax.contour(x_range, y_range, grid, levels=(-1,0,1), linewidths=(1,1,1),
                    linestyles=('--','-','--'), colors=colors)         
 		ax.scatter(self.X[:,0], self.X[:,1], c=self.y, cmap=plt.cm.viridis, lw=0, alpha=0.5)
-		mask = (self.params['alpha'] > 0) & (self.params['alpha'] < self.C)
+		mask = self.params['alpha'] != 0
 		ax.scatter(self.X[:,0][mask], self.X[:,1][mask], c=self.y[mask], cmap=plt.cm.viridis, s=100)
 		return grid, ax
 
